@@ -1,29 +1,95 @@
 <?php
+//
+// ## BEGIN COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
+// SOFTWARE NAME: eZ less
+// SOFTWARE RELEASE: 1.x
+// COPYRIGHT NOTICE: Copyright (C) 2010-2011 Phillip Dornauer, Juan Pablo Stumpf
+// SOFTWARE LICENSE: Creative Commons By-Sa 3.0
+// NOTICE: >
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of version 2.0  of the Creative Commons By-Sa 3.0
+//   License.
+//
+//   This program is distributed in the hope that it will be useful,
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   Creative Commons By-Sa 3.0 License for more details.
+//
+//
+// ## END COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
+//
 
+/**
+ * eZ Less Template Operator
+ */
 class ezLessOperator{
 	
+	
+	/**
+	 * $Operators
+	 * @access private
+	 * @type array
+	 */
 	private $Operators;
+	
+	
+	/**
+	 * $files
+	 * @access static
+	 * @type array
+	 */
 	static $files = array();
 	
 	
+	/**
+	 * eZ Template Operator Constructor
+	 * @return null
+	 */
 	function __construct(){
 		$this->Operators = array('ezless', 'ezless_add');
 	}
 
+	
+	/**
+	 * operatorList
+	 * @access public
+	 * @return array
+	 */
 	function &operatorList(){
 		return $this->Operators;
 	}
-
+	
+	/**
+	 * namedParameterPerOperator
+	 * @return true
+	 */
 	function namedParameterPerOperator(){
 		return true;
 	}
-
+	
+	
+	/**
+	 * namedParameterList
+	 * @return array 
+	 */
 	function namedParameterList(){
 		return array('ezless' => array(),
 					 'ezless_add' => array()
 				 );
 	}
-
+	
+	
+	/**
+	 * modify
+	 * @param & $tpl
+	 * @param & $operatorName
+	 * @param & $operatorParameters
+	 * @param & $rootNamespace
+	 * @param & $currentNamespace
+	 * @param & $operatorValue
+	 * @param & $namedParameters
+	 * @return null
+	 */
 	function modify( &$tpl, &$operatorName, &$operatorParameters, &$rootNamespace,
 									&$currentNamespace, &$operatorValue, &$namedParameters ){
 										
@@ -38,8 +104,14 @@ class ezLessOperator{
 		
 	}
 	
-	public function loadFiles($files){
-		if(count($files) > 0)
+	
+	/**
+	 * loadFiles
+	 * @param array $files
+	 * @return string $html generated html tags
+	 */
+	public function loadFiles( $files ){
+		if( is_array( $files ) )
 			foreach( $files as $file )
 				$pageLayoutFiles[] = $file;
 		
@@ -49,14 +121,28 @@ class ezLessOperator{
 		return $this->generateTag( $files );
 	}
 	
+	
 	/**
-	 * @TODO: fix img paths()
+	 * addFiles
+	 * @param array|string $files
+	 * @return null
 	 */
 	public function addFiles($files){
-		foreach( $files as $file )
-			self::$files[] = $file;
+		if( is_array( $files ) )
+			foreach( $files as $file )
+				self::$files[] = $file;
+		else
+			self::$files[] = $files;
 	}
 	
+	
+	/**
+	 * prependArray
+	 * @description prepends the $prepend array in front of $array
+	 * @param array $array
+	 * @param array $prepend
+	 * @return array $return
+	 */
 	private function prependArray( $array, $prepend ){
 		$return = $prepend;
 		
@@ -66,12 +152,18 @@ class ezLessOperator{
 		return $return;
 	}
 	
+	
+	/**
+	 * generateTag
+	 * @param array $files
+	 * @return string $html
+	 */
 	private function generateTag( $files ){
-		$html = '';
+		$html = $cssContent = '';
 
-		$ini = eZINI::instance( 'ezless.ini' );
+		$ini 		= eZINI::instance( 'ezless.ini' );
 		$useOneFile = $ini->variable( 'ezlessconfig','useOneFile' );
-		$bases   = eZTemplateDesignResource::allDesignBases();
+		$bases   	= eZTemplateDesignResource::allDesignBases();
 		$triedFiles = array();
 		
 		$sys = eZSys::instance();
@@ -83,26 +175,21 @@ class ezLessOperator{
 		if( ! $this->checkCacheFolder( $path ) )
 			return '';
 		
-		$cssContent = '';
-		
 		$less = new lessc();
 		
 		foreach($files as $file){
 			$match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
 			
-			if( $useOneFile == "true" ){
+			if( $useOneFile == "true" )
 				$cssContent .= file_get_contents( $match['path'] );
-			}else{
+			else{
 				
 				$content = self::fixImgPaths( file_get_contents( $match['path'] ), $match['path'] );
 				
 				$file = $path  . md5( $content ) . ".css";
-				
-				
-			
-				
+								
 				if( ! file_exists( $file ) )
-					file_put_contents( $file, $less->parse( $content ));//lessc::ccompile( $match['path'], $file );
+					file_put_contents( $file, $less->parse( $content ));
 				
 				$html .= '<link rel="stylesheet" type="text/css" href="/' . $file . '" />' . PHP_EOL;
 			
@@ -121,6 +208,12 @@ class ezLessOperator{
 		return $html;
 	}
 	
+	
+	/**
+	 * checkCacheFolder
+	 * @param string $path
+	 * @return bool true|false
+	 */
 	private function checkCacheFolder( $path ){
 		if( ! file_exists( $path ) ){
 			if( ! mkdir( $path, 0777, true) ){
@@ -134,6 +227,7 @@ class ezLessOperator{
 	
     /**
      * borrowed from ezjscore
+	 * @return string $wwwDir
      */
     static function getWwwDir()
     {
@@ -148,6 +242,9 @@ class ezLessOperator{
 	
     /**
      * borrowed from ezjscore
+	 * @param string $fileContent
+	 * @param string $file
+	 * @return string $fileontent
      */
 	static function fixImgPaths( $fileContent, $file )
     {
@@ -176,6 +273,9 @@ class ezLessOperator{
 
     /**
      * borrowed from ezjscore
+	 * @param string $css
+	 * @param string $packLevel
+	 * @return string $css
      */
     static function optimizeCSS( $css, $packLevel )
     {
