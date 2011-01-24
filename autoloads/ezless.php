@@ -184,12 +184,15 @@ class ezLessOperator{
 				$cssContent .= file_get_contents( $match['path'] );
 			else{
 				
-				$content = self::fixImgPaths( file_get_contents( $match['path'] ), $match['path'] );
-				
-				$file = $path  . md5( $content ) . ".css";
-								
-				if( ! file_exists( $file ) )
-					file_put_contents( $file, $less->parse( $content ));
+				/**
+				* @TODO:
+				* Caching is now obsolete because to get the md5-checksum
+				* of the file, it must get parsed every time it's called.
+				*/
+					
+				$content = file_get_contents( $match['path'] );
+				$content = self::fixImgPaths( $less->parse( $content ) );
+				$file = $path . md5( $content ) . ".css";
 				
 				$html .= '<link rel="stylesheet" type="text/css" href="/' . $file . '" />' . PHP_EOL;
 			
@@ -200,7 +203,7 @@ class ezLessOperator{
 		if( $useOneFile == "true" ){
 			$file = $path  . md5( $cssContent ) . ".css";
 			$less = new lessc();
-			file_put_contents( $file, $less->parse( $cssContent ));
+			file_put_contents( $file, $less->parse( $cssContent ) );
 			
 			$html = '<link rel="stylesheet" type="text/css" href="/' . $file . '" />' . PHP_EOL;
 		}
@@ -216,7 +219,7 @@ class ezLessOperator{
 	 */
 	private function checkCacheFolder( $path ){
 		if( ! file_exists( $path ) ){
-			if( ! mkdir( $path, 0777, true) ){
+			if( ! mkdir( $path, 0777, true ) ){
                 eZDebug::writeWarning( "Could not create Cache Path: $path", __METHOD__ );
                 return false;
 			}
