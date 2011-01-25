@@ -133,6 +133,7 @@ class ezLessOperator{
 				self::$files[] = $file;
 		else
 			self::$files[] = $files;
+			
 	}
 	
 	
@@ -168,44 +169,44 @@ class ezLessOperator{
 		
 		$sys = eZSys::instance();
 
-		$path = $sys->cacheDirectory() . '/ezless/';
+		$path = $sys->wwwDir() . "/" . $sys->cacheDirectory() . '/ezless/';
 		
 		require_once dirname( __FILE__ ) . '/../lib/lessc.inc.php';
 		
 		if( ! $this->checkCacheFolder( $path ) )
 			return '';
-		
+			
 		$less = new lessc();
-		
-		foreach($files as $file){
+		foreach( $files as $file){
 			$match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
 			
-			if( $useOneFile == "true" )
+			if( $useOneFile == "true" ){
 				$cssContent .= file_get_contents( $match['path'] );
-			else{
+			}else{
 				
-				/**
-				* @TODO:
-				* Caching is now obsolete because to get the md5-checksum
-				* of the file, it must get parsed every time it's called.
-				*/
 					
 				$content = file_get_contents( $match['path'] );
-				$content = self::fixImgPaths( $less->parse( $content ) );
-				$file = $path . md5( $content ) . ".css";
 				
-				$html .= '<link rel="stylesheet" type="text/css" href="/' . $file . '" />' . PHP_EOL;
+				$content = self::fixImgPaths( $less->parse( $content ) );
+				
+				$file = md5(uniqid(mt_rand(), true)) . ".css";
+				
+				file_put_contents( $sys->cacheDirectory() . '/ezless/' . $file, $content );
+				
+				$file = $path . $file;
+				
+				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
 			
 			}
 		}
 		
 		
 		if( $useOneFile == "true" ){
-			$file = $path  . md5( $cssContent ) . ".css";
+			$file = $path  . md5(uniqid(mt_rand(), true)) . ".css";
 			$less = new lessc();
 			file_put_contents( $file, $less->parse( $cssContent ) );
 			
-			$html = '<link rel="stylesheet" type="text/css" href="/' . $file . '" />' . PHP_EOL;
+			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
 		}
 		
 		return $html;
