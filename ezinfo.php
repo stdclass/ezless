@@ -19,7 +19,7 @@
 // ## END COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 //
 
-class ezjscoreInfo
+class ezlessInfo
 {
     static function info()
     {
