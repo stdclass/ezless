@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+ <software>
+     <metadata>
+         <name>eZ Less</name>
+         <version>0.1.1</version>
+         <copyright>Copyright (C) 2010-2011 Phillip Dornauer, Juan Pablo Stumpf</copyright>
+         <license>Creative Commons By-Sa 3.0</license>
+         <info_url>http://www.ezless.org</info_url>
+ 
+         <software>
+             <uses>
+                 <name>Less CSS</name>
+                 <license>Licensed under the Apache 2.0 License</license>
+                 <copyright>Copyright (c) 2010, Alexis Sellier</copyright>
+                 <info_url></info_url>
+                 <version>1.0.411</version>
+             </uses>
+ 
+         </software>
+ 
+     </metadata>
+ 
+     <dependencies>
+     </dependencies>
+ 
+ </software>

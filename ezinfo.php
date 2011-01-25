@@ -25,8 +25,8 @@ class ezlessInfo
     {
         $eZCopyrightString = 'Copyright (C) 2010-2011 Phillip Dornauer, Juan Pablo Stumpf';
 
-        return array( 'Name'      => '<a href="http://www.ezless.net">eZ less</a> extension',
-                      'Version'   => '0.0.1',
+        return array( 'Name'      => '<a href="http://www.ezless.org">eZ less</a> extension',
+                      'Version'   => '0.1.1',
                       'Copyright' => $eZCopyrightString,
                       'License'   => 'Creative Commons By-Sa 3.0',
                       'Includes the following third-party software' => array( 'Name' => 'Less Css',
