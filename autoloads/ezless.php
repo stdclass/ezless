@@ -179,6 +179,7 @@ class ezLessOperator{
 		if( ! $this->checkCacheFolder( $path ) )
 			return '';
 
+        $packerLevel = $this->getPackerLevel();
 		$less = new lessc();
 		foreach( $files as $file){
 			$match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
@@ -193,7 +194,11 @@ class ezLessOperator{
 				try
 				{
 				    $parsedContent = $less->parse( $content );
-    				$file = md5(uniqid(mt_rand(), true)) . ".css";
+    				if( $packerLevel > 1 )
+    			    {
+                        $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
+    			    }
+				    $file = md5(uniqid(mt_rand(), true)) . ".css";
     				file_put_contents( $sys->cacheDirectory() . '/ezless/' . $file, $parsedContent );
     				$file = $path . '/' . $file;
     				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
@@ -212,6 +217,12 @@ class ezLessOperator{
 	        try
 			{
 			    $parsedContent = $less->parse( $cssContent );
+
+                if( $packerLevel > 1 )
+			    {
+                    $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
+			    }
+
     			file_put_contents( $file, $parsedContent );
     			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     		}
@@ -240,63 +251,32 @@ class ezLessOperator{
 		return true;
 	}
 
-
-    /**
-     * borrowed from ezjscore
-	 * @return string $wwwDir
-     */
-    static function getWwwDir()
-    {
-        static $wwwDir = null;
-        if ( $wwwDir === null )
+	/**
+	 * Returns packer Level as defined in ezjscore.ini
+	 * borrowed from ezjscore
+	 * @return int
+	 */
+	private function getPackerLevel()
+	{
+	    $ezjscINI = eZINI::instance( 'ezjscore.ini' );
+	    // Only pack files if Packer is enabled and if not set DevelopmentMode is disabled
+        if ( $ezjscINI->hasVariable( 'eZJSCore', 'Packer' ) )
         {
-            $sys = eZSys::instance();
-            $wwwDir = $sys->wwwDir() . '/';
+            $packerIniValue = $ezjscINI->variable( 'eZJSCore', 'Packer' );
+            if ( $packerIniValue === 'disabled' )
+                return 0;
+            else if ( is_numeric( $packerIniValue ) )
+                return (int) $packerIniValue;
         }
-        return $wwwDir;
-    }
-
-    /**
-     * borrowed from ezjscore
-	 * @param string $css
-	 * @param string $packLevel
-	 * @return string $css
-     */
-    static function optimizeCSS( $css, $packLevel )
-    {
-        // normalize line feeds
-        $css = str_replace(array("\r\n", "\r"), "\n", $css);
-
-        // remove multiline comments
-        $css = preg_replace('!(?:\n|\s|^)/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);
-        $css = preg_replace('!(?:;)/\*[^*]*\*+([^/][^*]*\*+)*/!', ';', $css);
-
-        // remove whitespace from start and end of line + multiple linefeeds
-        $css = preg_replace(array('/\n\s+/', '/\s+\n/', '/\n+/'), "\n", $css);
-
-        if ( $packLevel > 2 )
+        else
         {
-            // remove space around ':' and ','
-            $css = preg_replace(array('/:\s+/', '/\s+:/'), ':', $css);
-            $css = preg_replace(array('/,\s+/', '/\s+,/'), ',', $css);
-
-            // remove unnecesery line breaks
-            $css = str_replace(array(";\n", '; '), ';', $css);
-            $css = str_replace(array("}\n","\n}", ';}'), '}', $css);
-            $css = str_replace(array("{\n", "\n{", '{;'), '{', $css);
-
-            // optimize css
-            $css = str_replace(array(' 0em', ' 0px',' 0pt', ' 0pc'), ' 0', $css);
-            $css = str_replace(array(':0em', ':0px',':0pt', ':0pc'), ':0', $css);
-            $css = str_replace(' 0 0 0 0;', ' 0;', $css);
-            $css = str_replace(':0 0 0 0;', ':0;', $css);
-
-            // these should use regex to work on all colors
-            $css = str_replace(array('#ffffff','#FFFFFF'), '#fff', $css);
-            $css = str_replace('#000000', '#000', $css);
+            if ( eZINI::instance()->variable( 'TemplateSettings', 'DevelopmentMode' ) === 'enabled' )
+            {
+                return 0;
+            }
+            else return 3;
         }
-        return $css;
-    }
+	}
 }
 
 ?>
