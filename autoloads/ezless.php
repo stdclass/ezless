@@ -23,24 +23,24 @@
  * eZ Less Template Operator
  */
 class ezLessOperator{
-	
-	
-	/**
+
+
+    /**
 	 * $Operators
 	 * @access private
 	 * @type array
 	 */
 	private $Operators;
-	
-	
+
+
 	/**
 	 * $files
 	 * @access static
 	 * @type array
 	 */
 	static $files = array();
-	
-	
+
+
 	/**
 	 * eZ Template Operator Constructor
 	 * @return null
@@ -49,7 +49,7 @@ class ezLessOperator{
 		$this->Operators = array('ezless', 'ezless_add');
 	}
 
-	
+
 	/**
 	 * operatorList
 	 * @access public
@@ -58,7 +58,7 @@ class ezLessOperator{
 	function &operatorList(){
 		return $this->Operators;
 	}
-	
+
 	/**
 	 * namedParameterPerOperator
 	 * @return true
@@ -66,19 +66,19 @@ class ezLessOperator{
 	function namedParameterPerOperator(){
 		return true;
 	}
-	
-	
+
+
 	/**
 	 * namedParameterList
-	 * @return array 
+	 * @return array
 	 */
 	function namedParameterList(){
 		return array('ezless' => array(),
 					 'ezless_add' => array()
 				 );
 	}
-	
-	
+
+
 	/**
 	 * modify
 	 * @param & $tpl
@@ -92,7 +92,7 @@ class ezLessOperator{
 	 */
 	function modify( &$tpl, &$operatorName, &$operatorParameters, &$rootNamespace,
 									&$currentNamespace, &$operatorValue, &$namedParameters ){
-										
+
 		switch ( $operatorName ){
 			case 'ezless':
 				$operatorValue = $this->loadFiles( $operatorValue );
@@ -101,27 +101,28 @@ class ezLessOperator{
 				$operatorValue = $this->addFiles( $operatorValue );
 				break;
 		}
-		
+
 	}
-	
-	
+
+
 	/**
 	 * loadFiles
 	 * @param array $files
 	 * @return string $html generated html tags
 	 */
 	public function loadFiles( $files ){
+	    $pageLayoutFiles = array();
 		if( is_array( $files ) )
 			foreach( $files as $file )
 				$pageLayoutFiles[] = $file;
-		
-		
+
+
 		$files = $this->prependArray( self::$files, $pageLayoutFiles );
-		
+
 		return $this->generateTag( $files );
 	}
-	
-	
+
+
 	/**
 	 * addFiles
 	 * @param array|string $files
@@ -133,10 +134,10 @@ class ezLessOperator{
 				self::$files[] = $file;
 		else
 			self::$files[] = $files;
-			
+
 	}
-	
-	
+
+
 	/**
 	 * prependArray
 	 * @description prepends the $prepend array in front of $array
@@ -146,73 +147,95 @@ class ezLessOperator{
 	 */
 	private function prependArray( $array, $prepend ){
 		$return = $prepend;
-		
+
 		foreach( $array as $value)
 			$return[] = $value;
-		
+
 		return $return;
 	}
-	
-	
+
+
 	/**
 	 * generateTag
 	 * @param array $files
 	 * @return string $html
 	 */
 	private function generateTag( $files ){
-		$html = $cssContent = '';
+        eZDebug::writeDebug($files, 'ezLessOperator::generateTag');
+
+	    $html = $cssContent = '';
 
 		$ini 		= eZINI::instance( 'ezless.ini' );
 		$useOneFile = $ini->variable( 'ezlessconfig','useOneFile' );
 		$bases   	= eZTemplateDesignResource::allDesignBases();
 		$triedFiles = array();
-		
+
 		$sys = eZSys::instance();
 
-		$path = $sys->wwwDir() . "/" . $sys->cacheDirectory() . '/ezless/';
-		
+		$path = $sys->cacheDirectory() . '/public/stylesheets';
+
 		require_once dirname( __FILE__ ) . '/../lib/lessc.inc.php';
-		
+
 		if( ! $this->checkCacheFolder( $path ) )
 			return '';
-			
+
+        $packerLevel = $this->getPackerLevel();
 		$less = new lessc();
 		foreach( $files as $file){
 			$match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
-			
+
+            $content = file_get_contents( $match['path'] );
+			$content = ezjscPacker::fixImgPaths( $content, $match['path'] );
+
+
 			if( $useOneFile == "true" ){
-				$cssContent .= file_get_contents( $match['path'] );
+				$cssContent .= $content;
 			}else{
-				
-					
-				$content = file_get_contents( $match['path'] );
-				
-				$content = self::fixImgPaths( $less->parse( $content ) );
-				
-				$file = md5(uniqid(mt_rand(), true)) . ".css";
-				
-				file_put_contents( $sys->cacheDirectory() . '/ezless/' . $file, $content );
-				
-				$file = $path . $file;
-				
-				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
-			
+				try
+				{
+				    $parsedContent = $less->parse( $content );
+    				if( $packerLevel > 1 )
+    			    {
+                        $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
+    			    }
+				    $file = md5(uniqid(mt_rand(), true)) . ".css";
+    				file_put_contents( $sys->cacheDirectory() . '/ezless/' . $file, $parsedContent );
+    				$file = $path . '/' . $file;
+    				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+    			}
+				catch( Exception $e )
+				{
+                    eZDebug::writeError( $e->getMessage(), 'ezLessOperator for ' . $match['path'] );
+				}
 			}
 		}
-		
-		
+
+
 		if( $useOneFile == "true" ){
-			$file = $path  . md5(uniqid(mt_rand(), true)) . ".css";
+			$file = $path . '/'  . md5(uniqid(mt_rand(), true)) . ".css";
 			$less = new lessc();
-			file_put_contents( $file, $less->parse( $cssContent ) );
-			
-			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+	        try
+			{
+			    $parsedContent = $less->parse( $cssContent );
+
+                if( $packerLevel > 1 )
+			    {
+                    $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
+			    }
+
+    			file_put_contents( $file, $parsedContent );
+    			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+    		}
+			catch( Exception $e )
+			{
+                eZDebug::writeError( $e->getMessage(), 'ezLessOperator parsing error' );
+			}
 		}
-		
+
 		return $html;
 	}
-	
-	
+
+
 	/**
 	 * checkCacheFolder
 	 * @param string $path
@@ -227,95 +250,33 @@ class ezLessOperator{
 		}
 		return true;
 	}
-	
-	
-    /**
-     * borrowed from ezjscore
-	 * @return string $wwwDir
-     */
-    static function getWwwDir()
-    {
-        static $wwwDir = null;
-        if ( $wwwDir === null )
+
+	/**
+	 * Returns packer Level as defined in ezjscore.ini
+	 * borrowed from ezjscore
+	 * @return int
+	 */
+	private function getPackerLevel()
+	{
+	    $ezjscINI = eZINI::instance( 'ezjscore.ini' );
+	    // Only pack files if Packer is enabled and if not set DevelopmentMode is disabled
+        if ( $ezjscINI->hasVariable( 'eZJSCore', 'Packer' ) )
         {
-            $sys = eZSys::instance();
-            $wwwDir = $sys->wwwDir() . '/';
+            $packerIniValue = $ezjscINI->variable( 'eZJSCore', 'Packer' );
+            if ( $packerIniValue === 'disabled' )
+                return 0;
+            else if ( is_numeric( $packerIniValue ) )
+                return (int) $packerIniValue;
         }
-        return $wwwDir;
-    }
-	
-    /**
-     * borrowed from ezjscore
-	 * @param string $fileContent
-	 * @param string $file
-	 * @return string $fileontent
-     */
-	static function fixImgPaths( $fileContent, $file )
-    {
-        if ( preg_match_all("/url\(\s*[\'|\"]?([A-Za-z0-9_\-\/\.\\%?&#]+)[\'|\"]?\s*\)/ix", $fileContent, $urlMatches) )
+        else
         {
-           $urlMatches = array_unique( $urlMatches[1] );
-           $cssPathArray   = explode( '/', $file );
-           // Pop the css file name
-           array_pop( $cssPathArray );
-           $cssPathCount = count( $cssPathArray );
-           foreach( $urlMatches as $match )
-           {
-               $match = str_replace( '\\', '/', $match );
-               $relativeCount = substr_count( $match, '../' );
-               
-               if ( $match[0] !== '/' and strpos( $match, 'http:' ) === false )
-               {
-                   $cssPathSlice = $relativeCount === 0 ? $cssPathArray : array_slice( $cssPathArray  , 0, $cssPathCount - $relativeCount  );
-                   $newMatchPath = self::getWwwDir() . implode('/', $cssPathSlice) . '/' . str_replace('../', '', $match);
-                   $fileContent = str_replace( $match, $newMatchPath, $fileContent );
-               }
-           }
+            if ( eZINI::instance()->variable( 'TemplateSettings', 'DevelopmentMode' ) === 'enabled' )
+            {
+                return 0;
+            }
+            else return 3;
         }
-        return $fileContent;
-    }
-
-    /**
-     * borrowed from ezjscore
-	 * @param string $css
-	 * @param string $packLevel
-	 * @return string $css
-     */
-    static function optimizeCSS( $css, $packLevel )
-    {
-        // normalize line feeds
-        $css = str_replace(array("\r\n", "\r"), "\n", $css);
-
-        // remove multiline comments
-        $css = preg_replace('!(?:\n|\s|^)/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);
-        $css = preg_replace('!(?:;)/\*[^*]*\*+([^/][^*]*\*+)*/!', ';', $css);
-
-        // remove whitespace from start and end of line + multiple linefeeds
-        $css = preg_replace(array('/\n\s+/', '/\s+\n/', '/\n+/'), "\n", $css);
-
-        if ( $packLevel > 2 )
-        {
-            // remove space around ':' and ','
-            $css = preg_replace(array('/:\s+/', '/\s+:/'), ':', $css);
-            $css = preg_replace(array('/,\s+/', '/\s+,/'), ',', $css);
-
-            // remove unnecesery line breaks
-            $css = str_replace(array(";\n", '; '), ';', $css);
-            $css = str_replace(array("}\n","\n}", ';}'), '}', $css);
-            $css = str_replace(array("{\n", "\n{", '{;'), '{', $css);
-
-            // optimize css
-            $css = str_replace(array(' 0em', ' 0px',' 0pt', ' 0pc'), ' 0', $css);
-            $css = str_replace(array(':0em', ':0px',':0pt', ':0pc'), ':0', $css);
-            $css = str_replace(' 0 0 0 0;', ' 0;', $css);
-            $css = str_replace(':0 0 0 0;', ':0;', $css);
-
-            // these should use regex to work on all colors
-            $css = str_replace(array('#ffffff','#FFFFFF'), '#fff', $css);
-            $css = str_replace('#000000', '#000', $css);
-        }
-        return $css;
-    }
+	}
 }
 
 ?>
