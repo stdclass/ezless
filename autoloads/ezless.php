@@ -201,6 +201,7 @@ class ezLessOperator{
 				    $file = md5(uniqid(mt_rand(), true)) . ".css";
     				file_put_contents( $sys->cacheDirectory() . '/ezless/' . $file, $parsedContent );
     				$file = $path . '/' . $file;
+    				eZURI::transformURI( $file );
     				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     			}
 				catch( Exception $e )
@@ -224,6 +225,7 @@ class ezLessOperator{
 			    }
 
     			file_put_contents( $file, $parsedContent );
+    			eZURI::transformURI( $file );
     			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     		}
 			catch( Exception $e )
