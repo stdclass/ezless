@@ -199,9 +199,9 @@ class ezLessOperator{
                         $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
     			    }
 				    $file = md5(uniqid(mt_rand(), true)) . ".css";
-    				file_put_contents( $sys->cacheDirectory() . '/ezless/' . $file, $parsedContent );
-    				$file = $path . '/' . $file;
-    				eZURI::transformURI( $file );
+			        eZFile::create( $file, $path, $parsedContent );
+    			    $file = $path . '/' . $file;
+    				eZURI::transformURI( $file, true );
     				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     			}
 				catch( Exception $e )
@@ -213,7 +213,7 @@ class ezLessOperator{
 
 
 		if( $useOneFile == "true" ){
-			$file = $path . '/'  . md5(uniqid(mt_rand(), true)) . ".css";
+			$file = md5(uniqid(mt_rand(), true)) . ".css";
 			$less = new lessc();
 	        try
 			{
@@ -224,8 +224,9 @@ class ezLessOperator{
                     $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
 			    }
 
-    			file_put_contents( $file, $parsedContent );
-    			eZURI::transformURI( $file );
+    			eZFile::create( $file, $path, $parsedContent );
+    			$file = $path . '/' . $file;
+    			eZURI::transformURI( $file, true );
     			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     		}
 			catch( Exception $e )
