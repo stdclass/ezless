@@ -176,8 +176,6 @@ class ezLessOperator{
 
 		require_once dirname( __FILE__ ) . '/../lib/lessc.inc.php';
 
-		if( ! $this->checkCacheFolder( $path ) )
-			return '';
 
         $packerLevel = $this->getPackerLevel();
 		$less = new lessc();
@@ -198,10 +196,11 @@ class ezLessOperator{
     			    {
                         $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
     			    }
-				    $file = md5(uniqid(mt_rand(), true)) . ".css";
-			        eZFile::create( $file, $path, $parsedContent );
-    			    $file = $path . '/' . $file;
-    				eZURI::transformURI( $file, true );
+                    $file = md5(uniqid(mt_rand(), true)) . ".css";
+                    $file = $path . '/' . $file;
+                    $clusterFile = eZClusterFileHandler::instance( $file );
+                    $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
+        			eZURI::transformURI( $file, true );
     				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     			}
 				catch( Exception $e )
@@ -224,8 +223,9 @@ class ezLessOperator{
                     $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
 			    }
 
-    			eZFile::create( $file, $path, $parsedContent );
     			$file = $path . '/' . $file;
+    			$clusterFile = eZClusterFileHandler::instance( $file );
+    			$clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
     			eZURI::transformURI( $file, true );
     			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
     		}
@@ -238,21 +238,6 @@ class ezLessOperator{
 		return $html;
 	}
 
-
-	/**
-	 * checkCacheFolder
-	 * @param string $path
-	 * @return bool true|false
-	 */
-	private function checkCacheFolder( $path ){
-		if( ! file_exists( $path ) ){
-			if( ! mkdir( $path, 0777, true ) ){
-                eZDebug::writeWarning( "Could not create Cache Path: $path", __METHOD__ );
-                return false;
-			}
-		}
-		return true;
-	}
 
 	/**
 	 * Returns packer Level as defined in ezjscore.ini
