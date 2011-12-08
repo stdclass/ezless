@@ -194,7 +194,7 @@ class ezLessOperator{
 				    $parsedContent = $less->parse( $content );
     				if( $packerLevel > 1 )
     			    {
-                        $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
+                        $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
     			    }
                     $file = md5(uniqid(mt_rand(), true)) . ".css";
                     $file = $path . '/' . $file;
@@ -220,7 +220,7 @@ class ezLessOperator{
 
                 if( $packerLevel > 1 )
 			    {
-                    $parsedContent = ezjscPacker::optimizeCSS( $parsedContent, $packerLevel );
+                    $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
 			    }
 
     			$file = $path . '/' . $file;
@@ -264,6 +264,31 @@ class ezLessOperator{
             }
             else return 3;
         }
+	}
+
+	/**
+	 * Optimizes CSS content using ezjscore
+	 * Using either INI optimzers or optimizeCSS if ezjscore is an older version
+	 * @param string $content
+	 * @param int $packerLevel
+	 * @return string
+	 */
+	private function optimizeCSS( $content, $packerLevel )
+	{
+	    $ezjscINI = eZINI::instance( 'ezjscore.ini' );
+	    if( $ezjscINI->hasVariable( 'eZJSCore', 'CssOptimizer' ) )
+	    {
+            foreach( $ezjscINI->variable( 'eZJSCore', 'CssOptimizer' ) as $optimizer )
+            {
+                $content = call_user_func( array( $optimizer, 'optimize' ), $content, $packerLevel );
+            }
+	    }
+	    elseif ( method_exists( 'ezjscPacker', 'optimizeCSS') )
+	    {
+	        $content = ezjscPacker::optimizeCSS( $content, $packerLevel );
+	    }
+
+	    return $content;
 	}
 }
 
