@@ -81,17 +81,17 @@ class ezLessOperator{
 
 	/**
 	 * modify
-	 * @param & $tpl
-	 * @param & $operatorName
-	 * @param & $operatorParameters
-	 * @param & $rootNamespace
-	 * @param & $currentNamespace
+	 * @param $tpl
+	 * @param $operatorName
+	 * @param $operatorParameters
+	 * @param $rootNamespace
+	 * @param $currentNamespace
 	 * @param & $operatorValue
-	 * @param & $namedParameters
+	 * @param $namedParameters
 	 * @return null
 	 */
-	function modify( &$tpl, &$operatorName, &$operatorParameters, &$rootNamespace,
-									&$currentNamespace, &$operatorValue, &$namedParameters ){
+	function modify( $tpl, $operatorName, $operatorParameters, $rootNamespace,
+									$currentNamespace, &$operatorValue, $namedParameters ){
 
 		switch ( $operatorName ){
 			case 'ezless':
@@ -112,10 +112,13 @@ class ezLessOperator{
 	 */
 	public function loadFiles( $files ){
 	    $pageLayoutFiles = array();
-		if( is_array( $files ) )
-			foreach( $files as $file )
-				$pageLayoutFiles[] = $file;
+		$afiles = (array)$files;
 
+		if( count( $afiles ) > 0 ){
+			foreach( $afiles as $file ){
+				$pageLayoutFiles[] = $file;
+			}
+		}
 
 		$files = $this->prependArray( self::$files, $pageLayoutFiles );
 
@@ -167,6 +170,7 @@ class ezLessOperator{
 
 		$ini 		= eZINI::instance( 'ezless.ini' );
 		$useOneFile = $ini->variable( 'ezlessconfig','useOneFile' );
+		// ToDo: siteaccess as parameter
 		$bases   	= eZTemplateDesignResource::allDesignBases();
 		$triedFiles = array();
 
@@ -179,8 +183,10 @@ class ezLessOperator{
 
         $packerLevel = $this->getPackerLevel();
 		$less = new lessc();
+		
 		foreach( $files as $file){
 			$match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
+			$less->importDir = dirname( $match['path'] );
 
             $content = file_get_contents( $match['path'] );
 			$content = ezjscPacker::fixImgPaths( $content, $match['path'] );
