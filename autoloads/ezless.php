@@ -178,8 +178,7 @@ class ezLessOperator{
 
 		$path = $sys->cacheDirectory() . '/public/stylesheets';
 
-		require_once dirname( __FILE__ ) . '/../lib/lessc.inc.php';
-
+		require_once dirname( __FILE__ ) . '/../lib/lessphp/lessc.inc.php';
 
         $packerLevel = $this->getPackerLevel();
 		$less = new lessc();
