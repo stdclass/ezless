@@ -166,81 +166,116 @@ class ezLessOperator{
 	private function generateTag( $files ){
         eZDebug::writeDebug($files, 'ezLessOperator::generateTag');
 
-	    $html = $cssContent = '';
+        $html = $cssContent = '';
 
-		$ini 		= eZINI::instance( 'ezless.ini' );
-		$useOneFile = $ini->variable( 'ezlessconfig','useOneFile' );
-		// ToDo: siteaccess as parameter
-		$bases   	= eZTemplateDesignResource::allDesignBases();
-		$triedFiles = array();
+        $ini        = eZINI::instance( 'ezless.ini' );
+        $compileMethod  = trim( $ini->variable( 'ezlessconfig', 'CompileMethod'  ) );
+        $useOneFile = $ini->variable( 'ezlessconfig','useOneFile' );
 
-		$sys = eZSys::instance();
+        // ToDo: siteaccess as parameter
+        $bases      = eZTemplateDesignResource::allDesignBases();
+        $triedFiles = array();
 
-		$path = $sys->cacheDirectory() . '/public/stylesheets';
+        if( $compileMethod === 'javascript' )
+        {
+            foreach ( $files as $file )
+            {
+                $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
+                if( $match )
+                {
+                    $path = "/{$match['path']}";
+                    $html .= "<link rel=\"stylesheet/less\" type=\"text/css\" href=\"{$path}\">" . PHP_EOL;
+                }
+            }
 
-		require_once dirname( __FILE__ ) . '/../lib/lessphp/lessc.inc.php';
+            $lessJSFilename = $ini->variable( 'ezlessconfig','LessJSFile' );
+            $lookForLessJS = eZTemplateDesignResource::fileMatch( $bases, '', 'javascript/' . $lessJSFilename, $triedFiles );
+            if( !$lookForLessJS )
+            {
+                eZDebug::writeDebug( "Using LessJS mode but unable to find less.js (LessJSFile={$lessJSFilename}).\nTried files : " . implode( "\n", $triedFiles ) , __CLASS__ . "::" . __FUNCTION__ );
+            }
+            else
+            {
+                $path = "/{$lookForLessJS['path']}";
+                $html .= "<script src=\"{$path}\" text=\"text/javascript\" ></script>" . PHP_EOL;
+            }
 
-        $packerLevel = $this->getPackerLevel();
-		$less = new lessc();
-		
-		foreach( $files as $file){
-			$match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
-			$less->importDir = dirname( $match['path'] );
+            return $html;
+        }
+        elseif( $compileMethod === 'lessphp' )
+        {
+            $sys = eZSys::instance();
 
-            $content = file_get_contents( $match['path'] );
-			$content = ezjscPacker::fixImgPaths( $content, $match['path'] );
+            $path = $sys->cacheDirectory() . '/public/stylesheets';
+
+            require_once dirname( __FILE__ ) . '/../lib/lessphp/lessc.inc.php';
+
+            $packerLevel = $this->getPackerLevel();
+            $less = new lessc();
+
+            foreach( $files as $file){
+                $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
+                $less->importDir = dirname( $match['path'] );
+
+                $content = file_get_contents( $match['path'] );
+                $content = ezjscPacker::fixImgPaths( $content, $match['path'] );
 
 
-			if( $useOneFile == "true" ){
-				$cssContent .= $content;
-			}else{
-				try
-				{
-				    $parsedContent = $less->parse( $content );
-    				if( $packerLevel > 1 )
-    			    {
+                if( $useOneFile == "true" ){
+                    $cssContent .= $content;
+                }else{
+                    try
+                    {
+                        $parsedContent = $less->parse( $content );
+                        if( $packerLevel > 1 )
+                        {
+                            $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
+                        }
+                        $file = md5(uniqid(mt_rand(), true)) . ".css";
+                        $file = $path . '/' . $file;
+                        $clusterFile = eZClusterFileHandler::instance( $file );
+                        $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
+                        eZURI::transformURI( $file, true );
+                        $html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+                    }
+                    catch( Exception $e )
+                    {
+                        eZDebug::writeError( $e->getMessage(), 'ezLessOperator for ' . $match['path'] );
+                    }
+                }
+            }
+
+
+            if( $useOneFile == "true" ){
+                $file = md5(uniqid(mt_rand(), true)) . ".css";
+                $less = new lessc();
+                try
+                {
+                    $parsedContent = $less->parse( $cssContent );
+
+                    if( $packerLevel > 1 )
+                    {
                         $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
-    			    }
-                    $file = md5(uniqid(mt_rand(), true)) . ".css";
+                    }
+
                     $file = $path . '/' . $file;
                     $clusterFile = eZClusterFileHandler::instance( $file );
                     $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
-        			eZURI::transformURI( $file, true );
-    				$html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
-    			}
-				catch( Exception $e )
-				{
-                    eZDebug::writeError( $e->getMessage(), 'ezLessOperator for ' . $match['path'] );
-				}
-			}
-		}
+                    eZURI::transformURI( $file, true );
+                    $html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+                }
+                catch( Exception $e )
+                {
+                    eZDebug::writeError( $e->getMessage(), 'ezLessOperator parsing error' );
+                }
+            }
 
-
-		if( $useOneFile == "true" ){
-			$file = md5(uniqid(mt_rand(), true)) . ".css";
-			$less = new lessc();
-	        try
-			{
-			    $parsedContent = $less->parse( $cssContent );
-
-                if( $packerLevel > 1 )
-			    {
-                    $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
-			    }
-
-    			$file = $path . '/' . $file;
-    			$clusterFile = eZClusterFileHandler::instance( $file );
-    			$clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
-    			eZURI::transformURI( $file, true );
-    			$html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
-    		}
-			catch( Exception $e )
-			{
-                eZDebug::writeError( $e->getMessage(), 'ezLessOperator parsing error' );
-			}
-		}
-
-		return $html;
+            return $html;
+        }
+        else
+        {
+            eZDebug::writeError( "Unknown compile method : '{$compileMethod}'", __CLASS__ . "::" . __FUNCTION__ );
+        }
 	}
 
 
