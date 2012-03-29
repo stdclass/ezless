@@ -197,7 +197,7 @@ class ezLessOperator{
             else
             {
                 $path = "/{$lookForLessJS['path']}";
-                $html .= "<script src=\"{$path}\" text=\"text/javascript\" ></script>" . PHP_EOL;
+                $html .= "<script src=\"{$path}\" type=\"text/javascript\" ></script>" . PHP_EOL;
             }
 
             return $html;
