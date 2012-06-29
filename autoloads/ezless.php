@@ -248,7 +248,6 @@ class ezLessOperator{
 
             if( $useOneFile == "true" ){
                 $file = md5(uniqid(mt_rand(), true)) . ".css";
-                $less = new lessc();
                 try
                 {
                     $parsedContent = $less->parse( $cssContent );
