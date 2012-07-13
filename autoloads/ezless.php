@@ -213,9 +213,13 @@ class ezLessOperator{
             $packerLevel = $this->getPackerLevel();
             $less = new lessc();
 
+            foreach( $bases as $base )
+            {
+                $less->importDir[] = $base . DIRECTORY_SEPARATOR . 'stylesheets';
+            }
+
             foreach( $files as $file){
                 $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
-                $less->importDir = dirname( $match['path'] );
 
                 $content = file_get_contents( $match['path'] );
                 $content = ezjscPacker::fixImgPaths( $content, $match['path'] );
