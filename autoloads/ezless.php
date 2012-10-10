@@ -40,13 +40,19 @@ class ezLessOperator{
 	 */
 	static $files = array();
 
+	/**
+	 * $imports
+	 * @access static
+	 * @type array
+	 */
+	static $imports = array();
 
 	/**
 	 * eZ Template Operator Constructor
 	 * @return null
 	 */
 	function __construct(){
-		$this->Operators = array('ezless', 'ezless_add');
+		$this->Operators = array( 'ezless', 'ezless_add', 'ezless_imports' );
 	}
 
 
@@ -73,9 +79,10 @@ class ezLessOperator{
 	 * @return array
 	 */
 	function namedParameterList(){
-		return array('ezless' => array(),
-					 'ezless_add' => array()
-				 );
+		return array(   'ezless' => array(),
+			            'ezless_add' => array(),
+                        'ezless_imports' => array()
+				    );
 	}
 
 
@@ -99,6 +106,9 @@ class ezLessOperator{
 				break;
 			case 'ezless_add':
 				$operatorValue = $this->addFiles( $operatorValue );
+				break;
+			case 'ezless_imports':
+				$operatorValue = $this->registerImports( $operatorValue );
 				break;
 		}
 
@@ -125,6 +135,18 @@ class ezLessOperator{
 		return $this->generateTag( $files );
 	}
 
+	/**
+	 * registerImports
+	 * @param array|string $files
+	 * @return null
+	 */
+	public function registerImports( $files ){
+		if( is_array( $files ) )
+			foreach( $files as $file )
+				self::$imports[] = $file;
+		else
+			self::$imports[] = $files;
+	}
 
 	/**
 	 * addFiles
@@ -139,7 +161,6 @@ class ezLessOperator{
 			self::$files[] = $files;
 
 	}
-
 
 	/**
 	 * prependArray
@@ -175,6 +196,7 @@ class ezLessOperator{
         // ToDo: siteaccess as parameter
         $bases      = eZTemplateDesignResource::allDesignBases();
         $triedFiles = array();
+        $importsTried = array();
 
         if( $compileMethod === 'javascript' )
         {
@@ -218,6 +240,17 @@ class ezLessOperator{
                 $less->importDir[] = $base . DIRECTORY_SEPARATOR . 'stylesheets';
             }
 
+            $importContent = "";
+            $importCss = "";
+            if( count( self::$imports ) > 0 ){
+                foreach( self::$imports as $import ){
+                    $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$import, $importsTried );
+
+                    $importCss = file_get_contents( $match['path'] );
+                    $importContent .= $importCss;
+                }
+            }
+
             foreach( $files as $file){
                 $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
 
@@ -230,12 +263,13 @@ class ezLessOperator{
                 }else{
                     try
                     {
-                        $parsedContent = $less->parse( $content );
+                        $parsedContent = $less->parse( $importContent.$content );
                         if( $packerLevel > 1 )
                         {
                             $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
                         }
-                        $file = md5(uniqid(mt_rand(), true)) . ".css";
+                        // $file = md5(uniqid(mt_rand(), true)) . ".css";
+                        $file = substr( $file, 0, -4 ).'css'; // we wan't to know what's the name of the less file on the browser
                         $file = $path . '/' . $file;
                         $clusterFile = eZClusterFileHandler::instance( $file );
                         $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
