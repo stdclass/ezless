@@ -191,6 +191,7 @@ class ezLessOperator{
 
         $ini        = eZINI::instance( 'ezless.ini' );
         $compileMethod  = trim( $ini->variable( 'ezlessconfig', 'CompileMethod'  ) );
+        $executable  = trim( $ini->variable( 'ezlessconfig', 'Executable'  ) );
         $useOneFile = $ini->variable( 'ezlessconfig','useOneFile' );
 
         // ToDo: siteaccess as parameter
@@ -308,6 +309,96 @@ class ezLessOperator{
             }
 
             return $html;
+        }
+        elseif( $compileMethod === 'lessc' )
+        {
+            $sys = eZSys::instance();
+
+            $path = $sys->cacheDirectory() . '/public/stylesheets';
+
+            $packerLevel = $this->getPackerLevel();
+
+            foreach( $bases as $base )
+            {
+                $less->importDir[] = $base . DIRECTORY_SEPARATOR . 'stylesheets';
+            }
+
+            $importContent = "";
+            $importCss = "";
+            if( count( self::$imports ) > 0 ){
+                foreach( self::$imports as $import ){
+                    $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$import, $importsTried );
+
+                    $importCss = file_get_contents( $match['path'] );
+                    $importContent .= $importCss;
+                }
+            }
+
+            foreach( $files as $file){
+
+
+                $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
+                
+                $file = substr( $file, 0, -4 ).'css'; // we wan't to know what's the name of the less file on the browser
+                $file = $path . '/' . $file;
+
+                $command=$executable." ".$match['path']." $file";
+                $output=shell_exec($command);
+                eZDebug::writeDebug($command,'command');
+
+                $content = file_get_contents($file );
+
+                $content = ezjscPacker::fixImgPaths(  $content,$file );
+
+                if( $useOneFile == "true" ){
+                    $cssContent .= $content;
+                }else{
+                    try
+                    {
+                        $parsedContent = $importContent.$content;
+                        //    $parsedContent = $less->parse( $importContent.$content );
+                        
+                        if( $packerLevel > 1 )
+                        {
+                            $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
+                        }
+                        
+                        $clusterFile = eZClusterFileHandler::instance( $file );
+                        $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
+                        eZURI::transformURI( $file, true );
+                        $html .= '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+                    }
+                    catch( Exception $e )
+                    {
+                        eZDebug::writeError( $e->getMessage(), 'ezLessOperator for ' . $match['path'] );
+                    }
+                }
+            }
+            if( $useOneFile == "true" ){
+                $file = md5(uniqid(mt_rand(), true)) . ".css";
+                try
+                {
+                    $parsedContent = $cssContent;
+
+                    if( $packerLevel > 1 )
+                    {
+                        $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
+                    }
+
+                    $file = $path . '/' . $file;
+                    $clusterFile = eZClusterFileHandler::instance( $file );
+                    $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
+                    eZURI::transformURI( $file, true );
+                    $html = '<link rel="stylesheet" type="text/css" href="' . $file . '" />' . PHP_EOL;
+                }
+                catch( Exception $e )
+                {
+                    eZDebug::writeError( $e->getMessage(), 'ezLessOperator parsing error' );
+                }
+            }
+
+            return $html;
+
         }
         else
         {
