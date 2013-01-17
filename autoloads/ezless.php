@@ -256,7 +256,7 @@ class ezLessOperator{
                 $match = eZTemplateDesignResource::fileMatch( $bases, '', 'stylesheets/'.$file, $triedFiles );
 
                 $content = file_get_contents( $match['path'] );
-            $content = ezjscPacker::fixImgPaths( $content, $match['path'] );
+                $content = ezjscPacker::fixImgPaths( $content, $match['path'] );
 
 
                 if( $useOneFile == "true" ){
@@ -316,10 +316,7 @@ class ezLessOperator{
 
             $path = $sys->cacheDirectory() . '/public/stylesheets';
 
-            //require_once dirname( __FILE__ ) .var/ezwebin_site/cache/public/stylesheets/responsive.css '/../lib/lessphp/lessc.inc.php';
-
             $packerLevel = $this->getPackerLevel();
-            //$less = new lessc();
 
             foreach( $bases as $base )
             {
@@ -348,28 +345,24 @@ class ezLessOperator{
                 $command=$executable." ".$match['path']." $file";
                 $output=shell_exec($command);
                 eZDebug::writeDebug($command,'command');
-                eZDebug::writeDebug($output,'output');
 
                 $content = file_get_contents($file );
 
                 $content = ezjscPacker::fixImgPaths(  $content,$file );
-
 
                 if( $useOneFile == "true" ){
                     $cssContent .= $content;
                 }else{
                     try
                     {
-                        $parsedContent = $content;
+                        $parsedContent = $importContent.$content;
                         //    $parsedContent = $less->parse( $importContent.$content );
                         
                         if( $packerLevel > 1 )
                         {
                             $parsedContent = $this->optimizeCSS( $parsedContent, $packerLevel );
                         }
-                        // $file = md5(uniqid(mt_rand(), true)) . ".css";
-                       // $file = substr( $file, 0, -4 ).'css'; // we wan't to know what's the name of the less file on the browser
-                       // $file = $path . '/' . $file;
+                        
                         $clusterFile = eZClusterFileHandler::instance( $file );
                         $clusterFile->storeContents( $parsedContent, 'ezless', 'text/css' );
                         eZURI::transformURI( $file, true );
@@ -403,7 +396,6 @@ class ezLessOperator{
                     eZDebug::writeError( $e->getMessage(), 'ezLessOperator parsing error' );
                 }
             }
-
 
             return $html;
 
