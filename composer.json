@@ -1,5 +1,5 @@
 {
-    "name": "obs/ezless",
+    "name": "stdclass/ezless",
     "description": "Less Extension for eZ Publish based on https://github.com/stdclass/ezless",
     "require":
     {
